@@ -1,0 +1,151 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 10;
+    padding: 10;
+    display: grid;
+    grid-template-columns: 1fr 3fr 1fr;
+    grid-template-rows: auto 3fr 1fr;
+    gap: 10px;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    background-color:#7c95a8; /* Teams-like light background */
+    color: #323130;
+    position: relative;
+}
+
+.trans {
+    grid-column: 1 / 1;
+    grid-row: 1 / 4;
+    border-right: 1px solid #e1dfdd;
+    padding: 10px;
+    overflow-y: auto;
+    background-color: #edebe9;
+    box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.1);
+    border-radius: 5px 5px 5px 5px
+}
+
+.ideas {
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    border-bottom: 1px solid #e1dfdd;
+    padding: 15px;
+    background-color: #edebe9;
+    box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.1);
+    border-radius: 5px 5px 5px 5px
+}
+
+.video {
+    grid-column: 2 / 3;
+    grid-row: 3 / 3;
+    padding: 15px;
+    background-color: #edebe9;
+    border: 1px solid #e1dfdd;
+    box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.1);
+    border-radius: 5px 5px 5px 5px
+}
+
+
+
+.clave {
+    grid-column: 3 / 3;
+    grid-row: 1 / 3;
+    border-left: 1px solid #e1dfdd;
+    padding: 15px;
+    border: 1px solid #e1dfdd;
+    background-color: #edebe9;
+    box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.1);
+    border-radius: 5px 5px 5px 5px
+}
+
+.resum {
+    grid-column: 3 / 3;
+    grid-row: 3 / 3;
+    border-left: 1px solid #e1dfdd;
+    padding: 15px;
+    overflow-y: auto;
+    background-color: #edebe9;
+    border-radius: 5px 5px 5px 5px;
+    box-shadow: inset 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+h2 {
+    margin: 0 0 10px;
+    font-size: 1.5em;
+    color: #004578; /* Teams primary blue */
+    text-align: center;
+}
+
+ul {
+    padding-left: 20px;
+    margin: 0;
+    list-style-type: disc;
+}
+
+video {
+    width: 100%;
+    height: auto;
+    border: none;
+    border-radius: 5px;
+    box-shadow: 10px 10px 10px rgba(0, 0, 0, 0.2);
+}
+
+p {
+    margin: 5px 0;
+    line-height: 1.5;
+}
+
+button {
+    display: inline-block;
+    margin: 10px 0;
+    padding: 10px 20px;
+    background-color: #0078d4; /* Teams button blue */
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #005a9e;
+}
+
+/* Responsiveness */
+@media (max-width: 768px) {
+    body {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto auto;
+    }
+
+    .trans {
+        grid-column: 1 / 2;
+        grid-row: 1 / 2;
+        border-right: none;
+        border-bottom: 1px solid #e1dfdd;
+        border-radius: 5px 5px 0 0;
+    }
+
+    .ideas {
+        grid-column: 1 / 2;
+        grid-row: 2 / 3;
+    }
+
+    .video {
+        grid-column: 1 / 2;
+        grid-row: 3 / 4;
+    }
+
+    .resum {
+        grid-column: 1 / 2;
+        grid-row: 4 / 5;
+    }
+
+    .clave {
+        grid-column: 1 / 2;
+        grid-row: 1 / 2;
+        border-right: none;
+        border-top: 1px solid #e1dfdd;
+        border-radius: 5px 5px;
+    }
+}
