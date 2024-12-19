@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Transcription Layout</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-vis"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.4.0/dist/transformers.min.js"></script>
+    <script type="module">
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.2.0';
+    </script>
+</head>
+
+
+<body>
+    <div class="trans">
+        <h2>Transcription</h2>
+        <p></p>
+    </div>
+    <div class="ideas">
+        <h2>Ideas</h2>
+        <ul>
+            <li>Use the extra week to improve the presentation design and content.</li>
+            <li>Assign a team member to focus specifically on the customer feedback analysis section.</li>
+            <li>Schedule a review meeting mid-week to ensure the team stays on track.</li>
+        </ul>
+    </div>
+    <div class="video">
+        <h2>Video</h2>
+        <video controls>
+            <source src="Weekly Meeting Example.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+    <div class="clave">
+        <h2>Key Words</h2>
+        <ul>
+            <li>Project Updates</li>
+            <li>Timeline Adjustment</li>
+            <li>Customer Feedback Analysis</li>
+        </ul>
+    </div>
+    <div class="resum">
+        <h2>Summarize</h2>
+        <p>This section contains the summary of the transcription.</p>
+        <p>The conversation discusses updates to a project timeline, which has been extended by a week. The new timeline allows for more time to refine the final presentation. A new section about customer feedback analysis was also added, and it appears manageable.</p>
+    </div>
+    <script type="module" src="index.js"></script>
+</body>
+</html>
