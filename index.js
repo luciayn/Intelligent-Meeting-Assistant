@@ -1,7 +1,10 @@
 // VERSION MODIFICANDOSE
 
 
-import { env, AutoProcessor, AutoModel, RawImage } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+import { env,pipeline, AutoProcessor, AutoModel, RawImage } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+
+
+// Load the YOLOv10s model and processor
 const model_id = 'onnx-community/yolov10s';
 const processor = await AutoProcessor.from_pretrained(model_id);
 const model = await AutoModel.from_pretrained(model_id);
@@ -24,9 +27,11 @@ const timeDataQueue = [];
 let audioContext;
 let stream;
 
-const contentSummary = document.querySelector('.resum');
-const transcriptionContainer = document.querySelector('.trans');
+const contentSummary = document.querySelector('.summary');
+const transcriptionContainer = document.querySelector('.transcription');
+const keyWordsItems = document.querySelectorAll('.keywords ul li');
 const videoElement = document.querySelector('.video video');
+
 
 
 (async function app() {
@@ -77,7 +82,6 @@ async function startRecordingRT() {
 //Function to start recording the audio of a video (actual implementation)
 async function startRecordingVideo(videoElement) {
     try {
-        console.log('Starting recording...');
         
         // Crear un contexto de audio
         audioContext = new AudioContext({
@@ -108,8 +112,6 @@ async function startRecordingVideo(videoElement) {
                 worker.postMessage({ type: 'generate', data: { audio: audioData, language } });
             }
         };
-
-        console.log('Recording started.');
     } catch (e) {
         console.error('Error starting recording:', e);
     }
@@ -144,13 +146,33 @@ async function getAudioStream(audioTrackConstraints) {
     }
 }
 
+const qwenWorker = new Worker('qwen.worker.js', { type: "module" }); // Path to your worker file
+qwenWorker.postMessage({ type: 'load' });
+qwenWorker.onerror = function (error) {
+    console.error('qwenWorker error:', error.message);
+};
+
+qwenWorker.onmessage = async (e) => {
+    switch(e.data.type) {
+    case 'token':
+        console.log('GENERANDO PALABRAS CLAVE',e.data.token);
+        keyWordsItems[1].textContent = e.data.token + ' ';
+        break;
+        
+    case 'ready':
+        console.log('Qwen2.5 worker READY');
+        break;
+    }}
+
+
+
 const worker = new Worker('whisper.worker.js', { type: "module" });
 
 // Different messages that the worker can receive and how to handle them
 worker.onmessage = function (e) {
     switch (e.data.status) {
         case 'loading':
-            console.log('Loading status:', e.data.data);
+            
             break;
 
         case 'initiate':
@@ -164,7 +186,7 @@ worker.onmessage = function (e) {
 
         case 'ready':
             // Start to get the audio of the video if the worker is ready
-            console.log('Worker is ready for processing.');
+            console.log('Whisper Worker READY');
             detectObjectsInVideo();
             startRecordingVideo(videoElement);
             
@@ -197,14 +219,28 @@ worker.postMessage({ type: 'load' });
 function updateTranscription(output) {
     const transcriptionText = output[0] || "";
     const transcriptionParagraph = transcriptionContainer.querySelector('p');
-
     if (transcriptionParagraph) {
         transcriptionParagraph.textContent += transcriptionText + ' ';
+        extractKeywords(transcriptionParagraph.textContent); // Mismo tiempo que transcribe actualiza las palabras clave
     } else {
         const newParagraph = document.createElement('p');
         newParagraph.textContent = transcriptionText + ' ';
         transcriptionContainer.appendChild(newParagraph);
+        extractKeywords(transcriptionParagraph.textContent);
     }
+}
+
+
+// Función para extraer palabras clave del prompt generado a partir de la transcripción
+async function extractKeywords(transcription) {
+    let prompt = `Extract keywords from the following text: ${transcription}`;
+    prompt = [
+        {"role":"system","content": "You are a keyword generator, just generate keywords from the text."},
+        {"role": "user", "content": prompt},
+    ]
+    // Generar palabras clave
+    qwenWorker.postMessage({ type: 'generate', prompt});
+
 }
 
 function generateSummary(){ 
@@ -247,14 +283,16 @@ async function detectObjectsInVideo() {
 }
 
 function compareDetectionCounts(previousCount, currentCount) {
-    if (currentCount > previousCount) {
-        console.log(`El número de detecciones ha aumentado: ${previousCount} → ${currentCount}`);
-        generateSummary();
-    } else if (currentCount < previousCount) {
-        console.log(`El número de detecciones ha disminuido: ${previousCount} → ${currentCount}`);
-    } else {
-        console.log(`El número de detecciones se mantiene igual: ${currentCount}`);
-    }
+    if (previousCount !== 0) {
+        if (currentCount > previousCount) {
+            console.log(`El número de detecciones ha aumentado: ${previousCount} → ${currentCount}`);
+            generateSummary();
+        } else if (currentCount < previousCount) {
+            console.log(`El número de detecciones ha disminuido: ${previousCount} → ${currentCount}`);
+        } else {
+            console.log(`El número de detecciones se mantiene igual: ${currentCount}`);
+        }
+}
 }
 
 // Función para capturar un frame del video con el cual se va a hacer la detección

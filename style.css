@@ -14,7 +14,7 @@ body {
     position: relative;
 }
 
-.trans {
+.transcription {
     grid-column: 1 / 1;
     grid-row: 1 / 4;
     border-right: 1px solid #e1dfdd;
@@ -47,7 +47,7 @@ body {
 
 
 
-.clave {
+.keywords {
     grid-column: 3 / 3;
     grid-row: 1 / 3;
     border-left: 1px solid #e1dfdd;
@@ -58,7 +58,7 @@ body {
     border-radius: 5px 5px 5px 5px
 }
 
-.resum {
+.summary {
     grid-column: 3 / 3;
     grid-row: 3 / 3;
     border-left: 1px solid #e1dfdd;
@@ -118,7 +118,7 @@ button:hover {
         grid-template-rows: auto auto auto auto auto;
     }
 
-    .trans {
+    .transcription {
         grid-column: 1 / 2;
         grid-row: 1 / 2;
         border-right: none;
@@ -136,12 +136,12 @@ button:hover {
         grid-row: 3 / 4;
     }
 
-    .resum {
+    .summary {
         grid-column: 1 / 2;
         grid-row: 4 / 5;
     }
 
-    .clave {
+    .keywords {
         grid-column: 1 / 2;
         grid-row: 1 / 2;
         border-right: none;

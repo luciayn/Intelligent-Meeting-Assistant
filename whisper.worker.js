@@ -83,7 +83,7 @@ async function generate({ audio, language }) {
 }
 
 async function load() {
-    console.log('Loading model...');
+    console.log('WHISPER LOADING...');
     self.postMessage({
         status: 'loading',
         data: 'Loading model...'
