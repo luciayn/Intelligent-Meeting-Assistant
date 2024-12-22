@@ -1,150 +1,34 @@
-// VERSION MODIFICANDOSE
+import { env,pipeline, AutoProcessor, AutoModel, RawImage } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1'; // importaciones para la ejecución de yolo
 
 
-import { env,pipeline, AutoProcessor, AutoModel, RawImage } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
-
-
-// Load the YOLOv10s model and processor
+//Carga de yolo10s
 const model_id = 'onnx-community/yolov10s';
 const processor = await AutoProcessor.from_pretrained(model_id);
 const model = await AutoModel.from_pretrained(model_id);
 
 
 
-const THRESHOLD = 0.25;
-const PEOPLE = 0;
+const THRESHOLD = 0.25; // Umbral de confianza para las detecciones
+const PEOPLE = 0; // Cantidad de gente detectada en el video
 let lastDetectionTime = 0;
 
 
-const WHISPER_SAMPLING_RATE = 16000;
+const WHISPER_SAMPLING_RATE = 16000; //sampling rate para la transcripción de video
 const MAX_AUDIO_LENGTH = 3.5; // seconds
 
-const MAX_SAMPLES = WHISPER_SAMPLING_RATE * MAX_AUDIO_LENGTH;
+const MAX_SAMPLES = WHISPER_SAMPLING_RATE * MAX_AUDIO_LENGTH; // max_samples para que haga la transcripción cada max_audio_legth segundos
 
-let language = 'en';
+let language = 'en'; // Lenguaje de la transcripción en inglés pq va mejor
 const timeDataQueue = [];
 
 let audioContext;
 let stream;
 
-const contentSummary = document.querySelector('.summary');
-const transcriptionContainer = document.querySelector('.transcription');
-const keyWordsItems = document.querySelectorAll('.keywords ul li');
-const videoElement = document.querySelector('.video video');
+const contentSummary = document.querySelector('.summary'); // Obtener el contenedor del resumen (derecha infererior)
+const transcriptionContainer = document.querySelector('.transcription'); // Obtener el contenedor de la transcripción (izquierda)
+const keyWordsItems = document.querySelectorAll('.keywords ul li'); // Obtener los elementos de la lista de palabras clave (derecha superior) teniendo en cuenta que se trata de una lista donde cada elemento es el ul/li del fromaro que se le ha puesto en el HTML (actualmente tan solo pone "keywords" en el segundo elemento)
+const videoElement = document.querySelector('.video video'); // Obtener el elemento de video centro
 
-
-
-(async function app() {
-    
-
-// Read image and run processor
-    if (navigator.mediaDevices.getUserMedia) {
-        console.log('Initializing...');
-        
-    }
-}());
-
-
-
-
-
-//Function to start recording in real time our own voice (not from a video)
-async function startRecordingRT() {
-    try {
-        console.log('Starting recording...');
-        stream = await getAudioStream();
-        audioContext = new AudioContext({
-            latencyHint: "playback",
-            sampleRate: WHISPER_SAMPLING_RATE
-        });
-        const streamSource = audioContext.createMediaStreamSource(stream);
-        
-        await audioContext.audioWorklet.addModule("recorder.worklet.js");
-        const recorder = new AudioWorkletNode(audioContext, "recorder.worklet");
-        streamSource.connect(recorder).connect(audioContext.destination);
-
-        recorder.port.onmessage = async (e) => {
-            const inputBuffer = Array.from(e.data);
-            if (inputBuffer[0] === 0) return;
-
-            timeDataQueue.push(...inputBuffer);
-
-            if (timeDataQueue.length >= MAX_SAMPLES) {
-                const audioData = new Float32Array(timeDataQueue.splice(0, MAX_SAMPLES));
-                worker.postMessage({ type: 'generate', data: { audio: audioData, language } });
-            }
-        };
-    } catch (e) {
-        console.error('Error starting recording:', e);
-    }
-}
-
-//Function to start recording the audio of a video (actual implementation)
-async function startRecordingVideo(videoElement) {
-    try {
-        
-        // Crear un contexto de audio
-        audioContext = new AudioContext({
-            latencyHint: "playback",
-            sampleRate: WHISPER_SAMPLING_RATE
-        });
-
-        // Crear una fuente de audio desde el elemento de video
-        const streamSource = audioContext.createMediaElementSource(videoElement);
-
-        // Cargar y conectar el módulo del worklet
-        await audioContext.audioWorklet.addModule("recorder.worklet.js");
-        const recorder = new AudioWorkletNode(audioContext, "recorder.worklet");
-        streamSource.connect(audioContext.destination);
-        streamSource.connect(recorder);
-        // Conectar el flujo de audio al recorder y al destino de audio
-        //streamSource.connect(recorder).connect(audioContext.destination);
-
-        // Procesar los datos del audio
-        recorder.port.onmessage = async (e) => {
-            const inputBuffer = Array.from(e.data);
-            if (inputBuffer[0] === 0) return;
-
-            timeDataQueue.push(...inputBuffer);
-
-            if (timeDataQueue.length >= MAX_SAMPLES) {
-                const audioData = new Float32Array(timeDataQueue.splice(0, MAX_SAMPLES));
-                worker.postMessage({ type: 'generate', data: { audio: audioData, language } });
-            }
-        };
-    } catch (e) {
-        console.error('Error starting recording:', e);
-    }
-}
-
-
-async function stopRecording() {
-    console.log('Stopping recording...');
-    if (!audioContext || !stream) return;
-    audioContext.close();
-    timeDataQueue.length = 0;
-    if (stream.getTracks().length > 0) {
-        stream.getTracks()[0].stop();
-    }
-}
-
-//Function to get the audio stream
-async function getAudioStream(audioTrackConstraints) {
-    let options = audioTrackConstraints || {};
-    try {
-        return await navigator.mediaDevices.getUserMedia({
-            video: false,
-            audio: {
-                sampleRate: options.sampleRate || WHISPER_SAMPLING_RATE,
-                sampleSize: options.sampleSize || 16,
-                channelCount: options.channelCount || 1
-            }
-        });
-    } catch (e) {
-        console.error(e);
-        return null;
-    }
-}
 
 const qwenWorker = new Worker('qwen.worker.js', { type: "module" }); // Path to your worker file
 qwenWorker.postMessage({ type: 'load' });
@@ -154,7 +38,7 @@ qwenWorker.onerror = function (error) {
 
 qwenWorker.onmessage = async (e) => {
     switch(e.data.type) {
-    case 'token':
+    case 'token': // Cuando se genera tokens (palabras clave en nuestro caso de worker) pues las metemos en keyWordsItems[1] que es el segundo elemento de la lista de palabras clave (de momento)
         console.log('GENERANDO PALABRAS CLAVE',e.data.token);
         keyWordsItems[1].textContent = e.data.token + ' ';
         break;
@@ -185,7 +69,7 @@ worker.onmessage = function (e) {
             break;
 
         case 'ready':
-            // Start to get the audio of the video if the worker is ready
+            // Mensaje de que el worker WHISPER esta listo para usarse
             console.log('Whisper Worker READY');
             detectObjectsInVideo();
             startRecordingVideo(videoElement);
@@ -215,7 +99,126 @@ worker.onerror = function (error) {
 
 worker.postMessage({ type: 'load' });
 
-// Function to update the transcription in the HTML
+
+
+
+(async function app() {
+    
+
+// Read image and run processor
+    if (navigator.mediaDevices.getUserMedia) {
+        console.log('Initializing...');
+        
+    }
+}());
+
+
+
+
+
+// Función para iniciar la grabación de audio en tiempo real, es decir, con nuestra propia voz (actualmente en desuso posible implementación futura)
+async function startRecordingRT() {
+    try {
+        console.log('Starting recording...');
+        stream = await getAudioStream();
+        audioContext = new AudioContext({
+            latencyHint: "playback",
+            sampleRate: WHISPER_SAMPLING_RATE
+        });
+        const streamSource = audioContext.createMediaStreamSource(stream);
+        
+        await audioContext.audioWorklet.addModule("recorder.worklet.js");
+        const recorder = new AudioWorkletNode(audioContext, "recorder.worklet");
+        streamSource.connect(recorder).connect(audioContext.destination);
+
+        recorder.port.onmessage = async (e) => {
+            const inputBuffer = Array.from(e.data);
+            if (inputBuffer[0] === 0) return;
+
+            timeDataQueue.push(...inputBuffer);
+
+            if (timeDataQueue.length >= MAX_SAMPLES) {
+                const audioData = new Float32Array(timeDataQueue.splice(0, MAX_SAMPLES));
+                worker.postMessage({ type: 'generate', data: { audio: audioData, language } });
+            }
+        };
+    } catch (e) {
+        console.error('Error starting recording:', e);
+    }
+}
+
+async function stopRecording() {
+    console.log('Stopping recording...');
+    if (!audioContext || !stream) return;
+    audioContext.close();
+    timeDataQueue.length = 0;
+    if (stream.getTracks().length > 0) {
+        stream.getTracks()[0].stop();
+    }
+}
+
+
+// Función para iniciar la grabación del audio del video reproducido en el HTML, es decir, con el audio del video (actualmente en uso)
+async function startRecordingVideo(videoElement) {
+    try {
+        
+        // Crear un contexto de audio
+        audioContext = new AudioContext({
+            latencyHint: "playback",
+            sampleRate: WHISPER_SAMPLING_RATE
+        });
+
+        // Crear una fuente de audio desde el elemento de video
+        const streamSource = audioContext.createMediaElementSource(videoElement);
+
+        // Cargar y conectar el módulo del worklet
+        await audioContext.audioWorklet.addModule("recorder.worklet.js");
+        const recorder = new AudioWorkletNode(audioContext, "recorder.worklet");
+        streamSource.connect(audioContext.destination);
+        streamSource.connect(recorder);
+        // Conectar el flujo de audio al recorder y al destino de audio
+        streamSource.connect(recorder).connect(audioContext.destination);
+
+        // Procesar los datos del audio
+        recorder.port.onmessage = async (e) => {
+            const inputBuffer = Array.from(e.data);
+            if (inputBuffer[0] === 0) return;
+
+            timeDataQueue.push(...inputBuffer);
+
+            if (timeDataQueue.length >= MAX_SAMPLES) {
+                const audioData = new Float32Array(timeDataQueue.splice(0, MAX_SAMPLES));
+                worker.postMessage({ type: 'generate', data: { audio: audioData, language } });
+            }
+        };
+    } catch (e) {
+        console.error('Error starting recording:', e);
+    }
+}
+
+
+
+
+// Función para obtener el audio del video para poder procesarlo
+async function getAudioStream(audioTrackConstraints) {
+    let options = audioTrackConstraints || {};
+    try {
+        return await navigator.mediaDevices.getUserMedia({
+            video: false,
+            audio: {
+                sampleRate: options.sampleRate || WHISPER_SAMPLING_RATE,
+                sampleSize: options.sampleSize || 16,
+                channelCount: options.channelCount || 1
+            }
+        });
+    } catch (e) {
+        console.error(e);
+        return null;
+    }
+}
+
+
+// FFun
 function updateTranscription(output) {
     const transcriptionText = output[0] || "";
     const transcriptionParagraph = transcriptionContainer.querySelector('p');
@@ -242,15 +245,15 @@ async function extractKeywords(transcription) {
     qwenWorker.postMessage({ type: 'generate', prompt});
 
 }
-
+// Generar resumen de la transcripción
 function generateSummary(){ 
     // FUNCTION WHERE A SUMMARY IS GENERATED BECAUSE A PERSON ENTERED THE ROOM
     const summaryParagraph = contentSummary.querySelectorAll('p')[1];
-    summaryParagraph.textContent = 'IT WORKS!!!!!!!!!!!!!!!!!';
+    summaryParagraph.textContent = 'TECHNICALLY, A SUMMARY OF THE TRANSCRIPTION WOULD GO HERE (SHOULD BE GENERATED WHEN THE DETECTION COUNT OF PEOPLE INCREASES)';
 
  }
-let previousDetectionsCount = 0;
-
+let previousDetectionsCount = 0; // Para quedarse con la detección anterior y compararla con la actual (para ver si ha aumentado o disminuido)
+// Función de detección de objetos en el video (en este caso, personas)
 async function detectObjectsInVideo() {
     if (!videoElement) {
         console.error('Video element not found.');
@@ -272,7 +275,7 @@ async function detectObjectsInVideo() {
             // Detectar objetos en el frame
 
             const detections = await detect(frameData);
-            compareDetectionCounts(previousDetectionsCount, detections.length);
+            compareDetectionCounts(previousDetectionsCount, detections.length); // Comparar el número de detecciones
             previousDetectionsCount = detections.length;
 
             //renderDetections(detections);
@@ -319,6 +322,3 @@ async function detect(frameData) {
     return detections.filter(d => d.score >= THRESHOLD && d.id === 0); // Que supere un umbral además de que SOLO sea detección de persona
 }
 
-// Función para renderizar las detecciones en el video
-
-// Iniciar la detección cuando el video comience a reproducirse

@@ -1,7 +1,6 @@
-import { TextStreamer, pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.0";
+import { TextStreamer, pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.0"; 
 
 const TASK_NAME = "text-generation";
-//const MODEL_NAME = "onnx-community/Qwen2.5-0.5B-Instruct";
 const MODEL_NAME = "onnx-community/Qwen2.5-0.5B-Instruct";
 
 let generator = null;
