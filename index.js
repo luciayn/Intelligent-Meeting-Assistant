@@ -1,4 +1,5 @@
 import { env,pipeline, AutoProcessor, AutoModel, RawImage } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1'; // importaciones para la ejecución de yolo
+import { summarizeTextWithHF } from './summarizer.js';
 
 
 //Carga de yolo10s
@@ -245,13 +246,30 @@ async function extractKeywords(transcription) {
     qwenWorker.postMessage({ type: 'generate', prompt});
 
 }
+
+function getFullTranscriptionText() {
+    let fullText = '';
+    const paragraphs = transcriptionContainer.querySelectorAll('p');
+    paragraphs.forEach(p => {
+      fullText += p.textContent + ' ';
+    });
+    return fullText.trim();
+}
+
+async function generateSummary() {
+    const fullText = getFullTranscriptionText();
+    const summary = await summarizeTextWithHF(fullText);
+  
+    const summaryParagraph = contentSummary.querySelectorAll('p')[1];
+    summaryParagraph.textContent = summary || "No se pudo generar un resumen.";
+}
 // Generar resumen de la transcripción
-function generateSummary(){ 
+/*function generateSummary(){ 
     // FUNCTION WHERE A SUMMARY IS GENERATED BECAUSE A PERSON ENTERED THE ROOM
     const summaryParagraph = contentSummary.querySelectorAll('p')[1];
     summaryParagraph.textContent = 'TECHNICALLY, A SUMMARY OF THE TRANSCRIPTION WOULD GO HERE (SHOULD BE GENERATED WHEN THE DETECTION COUNT OF PEOPLE INCREASES)';
 
- }
+ }*/
 let previousDetectionsCount = 0; // Para quedarse con la detección anterior y compararla con la actual (para ver si ha aumentado o disminuido)
 // Función de detección de objetos en el video (en este caso, personas)
 async function detectObjectsInVideo() {
