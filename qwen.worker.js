@@ -11,8 +11,14 @@ self.onmessage = async (e) => {
         case 'load':
             await load();
             break;
-        case 'generate':
-            await generate(e.data.prompt);
+        case 'generate_keywords':
+            const result_keywords = await generate_keywords(e.data.prompt);
+            self.postMessage({ type: 'result_keywords', result_keywords: result_keywords }); // Send the result back
+            break;
+        case 'generate_ideas':
+            console.log(`check entering IDEAS`);
+            const result_ideas = await generate_ideas(e.data.prompt);
+            self.postMessage({ type: 'result_ideas', result_ideas: result_ideas }); // Send the result back
             break;
     }
 
@@ -40,16 +46,30 @@ async function load() {
 }
 
 // Función para generar una respuesta con el modelo
-async function generate(prompt) {
+async function generate_keywords(prompt) {
     const output = await generator(prompt, {
-        max_new_tokens: 3,
-        temperature: 0,
+        max_new_tokens: 8,
+        temperature: 0.2,
         top_p: 0,
         do_sample: true,
-        early_stopping: true,
-        streamer
+        early_stopping: true
     });
+    console.log(`keywords format: ${output[0].generated_text[2]['content']}`)
+    return JSON.parse(output[0].generated_text[2]['content'])
+    // Ya se están enviando tokens de forma incremental con el callback_function
+}
 
+// Función para generar una respuesta con el modelo
+async function generate_ideas(prompt) {
+    const output = await generator(prompt, {
+        max_new_tokens: 50,
+        temperature: 0.2,
+        top_p: 0,
+        do_sample: true,
+        early_stopping: true
+    });
+    console.log(`ideas format: ${output[0].generated_text[2]['content']}`)
+    return JSON.parse(output[0].generated_text[2]['content'])
     // Ya se están enviando tokens de forma incremental con el callback_function
 }
 

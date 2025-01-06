@@ -24,10 +24,13 @@ const timeDataQueue = [];
 
 let audioContext;
 let stream;
+let keywords;
+let ideas;
 
 const contentSummary = document.querySelector('.summary'); // Obtener el contenedor del resumen (derecha infererior)
 const transcriptionContainer = document.querySelector('.transcription'); // Obtener el contenedor de la transcripción (izquierda)
-const keyWordsItems = document.querySelectorAll('.keywords ul li'); // Obtener los elementos de la lista de palabras clave (derecha superior) teniendo en cuenta que se trata de una lista donde cada elemento es el ul/li del fromaro que se le ha puesto en el HTML (actualmente tan solo pone "keywords" en el segundo elemento)
+const keyWordsItems = document.querySelector('.keywords ul'); // Obtener los elementos de la lista de palabras clave (derecha superior) teniendo en cuenta que se trata de una lista donde cada elemento es el ul/li del fromaro que se le ha puesto en el HTML (actualmente tan solo pone "keywords" en el segundo elemento)
+const ideasItems = document.querySelector('.ideas ul');
 const videoElement = document.querySelector('.video video'); // Obtener el elemento de video centro
 
 
@@ -39,15 +42,45 @@ qwenWorker.onerror = function (error) {
 
 qwenWorker.onmessage = async (e) => {
     switch(e.data.type) {
-    case 'token': // Cuando se genera tokens (palabras clave en nuestro caso de worker) pues las metemos en keyWordsItems[1] que es el segundo elemento de la lista de palabras clave (de momento)
-        console.log('GENERANDO PALABRAS CLAVE',e.data.token);
-        keyWordsItems[1].textContent = e.data.token + ' ';
+        
+    case 'result_keywords': // Cuando se genera tokens (palabras clave en nuestro caso de worker) pues las metemos en keyWordsItems[1] que es el segundo elemento de la lista de palabras clave (de momento)
+        console.log('GENERANDO PALABRAS CLAVE');
+        // Clear the existing list to replace it with new items
+        keyWordsItems.innerHTML = '';
+
+        keywords = e.data.result_keywords;
+        console.log("Extracted Keywords:", keywords); // Log the keywords
+
+        // Iterate over the new keywords list and create list items
+        keywords.forEach((keyword) => {
+            const listItem = document.createElement('li'); // Create a new list item
+            listItem.textContent = keyword;               // Set the text content to the keyword
+            keyWordsItems.appendChild(listItem);      // Append the item to the list container
+        });
+        await generateIdeas(keywords);
         break;
         
+    case 'result_ideas':
+        console.log('GENERANDO IDEAS');
+        // Clear the existing list to replace it with new items
+        ideasItems.innerHTML = '';
+
+        ideas = e.data.result_ideas;
+        console.log("Generated Ideas:", ideas); // Log the ideas
+
+        // Iterate over the new ideas list and create list items
+        ideas.forEach((idea) => {
+            const listItem = document.createElement('li'); // Create a new list item
+            listItem.textContent = idea;               // Set the text content to the idea
+            ideasItems.appendChild(listItem);      // Append the item to the list container
+        });
+        break;
+
     case 'ready':
         console.log('Qwen2.5 worker READY');
         break;
-    }}
+    }
+}
 
 
 
@@ -220,31 +253,55 @@ async function getAudioStream(audioTrackConstraints) {
 
 
 // FFun
-function updateTranscription(output) {
+async function updateTranscription(output) {
     const transcriptionText = output[0] || "";
     const transcriptionParagraph = transcriptionContainer.querySelector('p');
     if (transcriptionParagraph) {
         transcriptionParagraph.textContent += transcriptionText + ' ';
-        extractKeywords(transcriptionParagraph.textContent); // Mismo tiempo que transcribe actualiza las palabras clave
+        await extractKeywords(transcriptionParagraph.textContent); // Mismo tiempo que transcribe actualiza las palabras clave
+
     } else {
         const newParagraph = document.createElement('p');
         newParagraph.textContent = transcriptionText + ' ';
         transcriptionContainer.appendChild(newParagraph);
-        extractKeywords(transcriptionParagraph.textContent);
+        await extractKeywords(transcriptionParagraph.textContent);
     }
 }
 
 
 // Función para extraer palabras clave del prompt generado a partir de la transcripción
 async function extractKeywords(transcription) {
-    let prompt = `Extract keywords from the following text: ${transcription}`;
+    let content = 
+        `I have the following text: ${transcription}.
+        Based on the information above, extract the keywords that best describe the topic of the text.
+        The output must be a list of keywords. For example: ["School", "Student", "Music"]`;
     prompt = [
-        {"role":"system","content": "You are a keyword generator, just generate keywords from the text."},
-        {"role": "user", "content": prompt},
+        {"role":"system","content": "You are a keyword expert generator, whose objective is to generate keywords from a given text."},
+        {"role": "user", "content": content},
     ]
     // Generar palabras clave
-    qwenWorker.postMessage({ type: 'generate', prompt});
+    qwenWorker.postMessage({ type: 'generate_keywords', prompt});
+}
 
+// Función para ideas a partir de las keywords extraídas
+async function generateIdeas(keywords) {
+
+    let content = 
+        `I have the following keywords: ${keywords}.
+        Based on the information above, generate a list of innovative and precise ideas that best describe the topic of the keywords.
+         
+        Example:
+        keywords: ["Project Updates", "Timeline Adjustment", "Customer Feedback Analysis"], 
+        Ideas: ["Use the extra week to improve the presentation design and content.", "Assign a team member to focus specifically on the customer feedback analysis section.", "Schedule a review meeting mid-week to ensure the team stays on track."]
+
+        The output MUST be a list containing ONLY the ideas.`;
+
+    prompt = [
+        {"role":"system","content": "You are an creative generator, whose objective is to generate ideas from a given list of keywords."},
+        {"role": "user", "content": content},
+    ]
+    // Generar palabras clave
+    qwenWorker.postMessage({ type: 'generate_ideas', prompt});
 }
 
 function getFullTranscriptionText() {
@@ -262,6 +319,8 @@ async function generateSummary() {
   
     const summaryParagraph = contentSummary.querySelectorAll('p')[1];
     summaryParagraph.textContent = summary || "No se pudo generar un resumen.";
+
+    console.log(`Summary: ${summaryParagraph.textContent}`);
 }
 // Generar resumen de la transcripción
 /*function generateSummary(){ 
