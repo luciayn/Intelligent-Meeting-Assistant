@@ -24,6 +24,7 @@ const timeDataQueue = [];
 
 let audioContext;
 let stream;
+let textBuffer = ''; // Texto acumulado durante 30 segundos para la generación de palabras clave 
 let keywords;
 let ideas;
 
@@ -43,36 +44,34 @@ qwenWorker.onerror = function (error) {
 qwenWorker.onmessage = async (e) => {
     switch(e.data.type) {
         
-    case 'result_keywords': // Cuando se genera tokens (palabras clave en nuestro caso de worker) pues las metemos en keyWordsItems[1] que es el segundo elemento de la lista de palabras clave (de momento)
-        console.log('GENERANDO PALABRAS CLAVE');
-        // Clear the existing list to replace it with new items
-        keyWordsItems.innerHTML = '';
+    case 'result_keywords':
+        console.log('PALABRAS CLAVE GENERADAS');
+        // keyWordsItems.innerHTML = '';
 
         keywords = e.data.result_keywords;
-        console.log("Extracted Keywords:", keywords); // Log the keywords
-
-        // Iterate over the new keywords list and create list items
-        keywords.forEach((keyword) => {
-            const listItem = document.createElement('li'); // Create a new list item
-            listItem.textContent = keyword;               // Set the text content to the keyword
-            keyWordsItems.appendChild(listItem);      // Append the item to the list container
-        });
         await generateIdeas(keywords);
+        console.log("Extracted Keywords:", keywords);
+
+        // Iterar sobre la lista de palabras clave y crear un elemento de lista para cada una
+        keywords.forEach((keyword) => {
+            const listItem = document.createElement('li'); // Crear elemento de lista
+            listItem.textContent = keyword;               // Definir palabra clave
+            keyWordsItems.appendChild(listItem);      // Añadir a la lista
+        });
         break;
         
     case 'result_ideas':
-        console.log('GENERANDO IDEAS');
-        // Clear the existing list to replace it with new items
-        ideasItems.innerHTML = '';
+        console.log('IDEAS GENERADAS');
+        // ideasItems.innerHTML = '';
 
         ideas = e.data.result_ideas;
-        console.log("Generated Ideas:", ideas); // Log the ideas
+        console.log("Generated Ideas:", ideas);
 
-        // Iterate over the new ideas list and create list items
+        // Iterar sobre la lista de ideas y crear un elemento de lista para cada una
         ideas.forEach((idea) => {
-            const listItem = document.createElement('li'); // Create a new list item
-            listItem.textContent = idea;               // Set the text content to the idea
-            ideasItems.appendChild(listItem);      // Append the item to the list container
+            const listItem = document.createElement('li'); // Crear elemento de lista
+            listItem.textContent = idea;               // Definir idea
+            ideasItems.appendChild(listItem);      // Añadir a la lista
         });
         break;
 
@@ -86,11 +85,10 @@ qwenWorker.onmessage = async (e) => {
 
 const worker = new Worker('whisper.worker.js', { type: "module" });
 
-// Different messages that the worker can receive and how to handle them
+// Mensajes que puede recibir el worker
 worker.onmessage = function (e) {
     switch (e.data.status) {
         case 'loading':
-            
             break;
 
         case 'initiate':
@@ -107,7 +105,6 @@ worker.onmessage = function (e) {
             console.log('Whisper Worker READY');
             detectObjectsInVideo();
             startRecordingVideo(videoElement);
-            
             break;
 
         case 'start':
@@ -118,10 +115,11 @@ worker.onmessage = function (e) {
             break;
 
         case 'complete':
-            // Start to transcribe the audio when the worker is done
+            // Comenzar a transcribir el audio una vez el worker WHISPER esté listo
             console.log(e.data.output);
             updateTranscription(e.data.output);
             break;
+
         default:
             console.error('Unknown status:', status);
     }
@@ -137,9 +135,7 @@ worker.postMessage({ type: 'load' });
 
 
 (async function app() {
-    
-
-// Read image and run processor
+// Inicialización
     if (navigator.mediaDevices.getUserMedia) {
         console.log('Initializing...');
         
@@ -147,7 +143,14 @@ worker.postMessage({ type: 'load' });
 }());
 
 
-
+// Start a timer to generate keywords every 30 seconds
+setInterval(() => {
+    if (textBuffer.trim().length > 0) {
+        console.log('Generating keywords for:', textBuffer);
+        extractKeywords(textBuffer); // Process the accumulated text
+        textBuffer = ''; // Clear the buffer after processing
+    }
+}, 30000); // 30 seconds (30*1000 miliseconds)
 
 
 // Función para iniciar la grabación de audio en tiempo real, es decir, con nuestra propia voz (actualmente en desuso posible implementación futura)
@@ -225,6 +228,14 @@ async function startRecordingVideo(videoElement) {
                 worker.postMessage({ type: 'generate', data: { audio: audioData, language } });
             }
         };
+
+        // Para la transcripción cuando el vídeo termina
+        videoElement.addEventListener('ended', async () => {
+            console.log('Video playback finished. Stopping transcription.');
+            setTimeout(() => {
+                worker.terminate(); 
+            }, 30 * 1000); // Para el worker a los 30 segundos
+        });
     } catch (e) {
         console.error('Error starting recording:', e);
     }
@@ -258,23 +269,24 @@ async function updateTranscription(output) {
     const transcriptionParagraph = transcriptionContainer.querySelector('p');
     if (transcriptionParagraph) {
         transcriptionParagraph.textContent += transcriptionText + ' ';
-        await extractKeywords(transcriptionParagraph.textContent); // Mismo tiempo que transcribe actualiza las palabras clave
 
     } else {
         const newParagraph = document.createElement('p');
         newParagraph.textContent = transcriptionText + ' ';
         transcriptionContainer.appendChild(newParagraph);
-        await extractKeywords(transcriptionParagraph.textContent);
     }
-}
 
+    textBuffer += transcriptionText + ' '; // Añadir nuevo texto al buffer
+}
 
 // Función para extraer palabras clave del prompt generado a partir de la transcripción
 async function extractKeywords(transcription) {
     let content = 
         `I have the following text: ${transcription}.
-        Based on the information above, extract the keywords that best describe the topic of the text.
-        The output must be a list of keywords. For example: ["School", "Student", "Music"]`;
+        Based on the information above, extract the THREE keywords that best describe the topic of the text.
+        The output MUST be the following format: ["keyword1", "keyword2", "keyword3"]. Ouput example: ["School", "Student", "Music"]
+        Make sure the output is composed by a SINGLE list with THREE keywords`;
+        
     prompt = [
         {"role":"system","content": "You are a keyword expert generator, whose objective is to generate keywords from a given text."},
         {"role": "user", "content": content},
@@ -285,16 +297,18 @@ async function extractKeywords(transcription) {
 
 // Función para ideas a partir de las keywords extraídas
 async function generateIdeas(keywords) {
+    console.log('Generating ideas for:', keywords);
 
     let content = 
         `I have the following keywords: ${keywords}.
-        Based on the information above, generate a list of innovative and precise ideas that best describe the topic of the keywords.
-         
+        Based on the information above, generate a list of THREE innovative and precise ideas that best describe the topic of the keywords.
+        Each idea must be defined with quotation marks ("").
+        The output MUST be the following format: ["idea1", "idea2", "idea3"].
+        Make sure the output is composed ONLY by a SINGLE list with THREE ideas.
+
         Example:
         keywords: ["Project Updates", "Timeline Adjustment", "Customer Feedback Analysis"], 
-        Ideas: ["Use the extra week to improve the presentation design and content.", "Assign a team member to focus specifically on the customer feedback analysis section.", "Schedule a review meeting mid-week to ensure the team stays on track."]
-
-        The output MUST be a list containing ONLY the ideas.`;
+        ideas: ["Use the extra week to improve the presentation design and content.", "Assign a team member to focus specifically on the customer feedback analysis section.", "Schedule a review meeting mid-week to ensure the team stays on track."]`;
 
     prompt = [
         {"role":"system","content": "You are an creative generator, whose objective is to generate ideas from a given list of keywords."},

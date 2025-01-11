@@ -13,12 +13,11 @@ self.onmessage = async (e) => {
             break;
         case 'generate_keywords':
             const result_keywords = await generate_keywords(e.data.prompt);
-            self.postMessage({ type: 'result_keywords', result_keywords: result_keywords }); // Send the result back
+            self.postMessage({ type: 'result_keywords', result_keywords: result_keywords }); // Devolver al main las palabras claves generadas
             break;
         case 'generate_ideas':
-            console.log(`check entering IDEAS`);
             const result_ideas = await generate_ideas(e.data.prompt);
-            self.postMessage({ type: 'result_ideas', result_ideas: result_ideas }); // Send the result back
+            self.postMessage({ type: 'result_ideas', result_ideas: result_ideas }); // Devolver al main las ideas generadas
             break;
     }
 
@@ -33,11 +32,6 @@ async function load() {
         { dtype: "fp16", device: "wasm", }
     );
 
-    streamer = new TextStreamer(generator.tokenizer, {
-        skip_prompt: true,
-        callback_function,
-    });
-
     // WARM-UP: Perform a dummy inference
     await generator("Warm up", {
         max_new_tokens: 1
@@ -48,36 +42,25 @@ async function load() {
 // Función para generar una respuesta con el modelo
 async function generate_keywords(prompt) {
     const output = await generator(prompt, {
-        max_new_tokens: 8,
-        temperature: 0.2,
-        top_p: 0,
+        max_new_tokens: 30,
+        temperature: 0.5,
+        top_p: 0.5,
         do_sample: true,
         early_stopping: true
     });
     console.log(`keywords format: ${output[0].generated_text[2]['content']}`)
     return JSON.parse(output[0].generated_text[2]['content'])
-    // Ya se están enviando tokens de forma incremental con el callback_function
 }
 
 // Función para generar una respuesta con el modelo
 async function generate_ideas(prompt) {
     const output = await generator(prompt, {
-        max_new_tokens: 50,
-        temperature: 0.2,
-        top_p: 0,
+        max_new_tokens: 200,
+        temperature: 0.7,
+        top_p: 0.8,
         do_sample: true,
         early_stopping: true
     });
     console.log(`ideas format: ${output[0].generated_text[2]['content']}`)
     return JSON.parse(output[0].generated_text[2]['content'])
-    // Ya se están enviando tokens de forma incremental con el callback_function
 }
-
-// Función de callback para enviar cada token generado al hilo principal
-function callback_function(token) {
-    self.postMessage({ type: "token", token });
-}
-
-
-
-
