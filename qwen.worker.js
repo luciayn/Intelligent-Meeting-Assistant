@@ -4,7 +4,6 @@ const TASK_NAME = "text-generation";
 const MODEL_NAME = "onnx-community/Qwen2.5-0.5B-Instruct";
 
 let generator = null;
-let streamer = null;
 
 self.onmessage = async (e) => {
     switch (e.data.type) {

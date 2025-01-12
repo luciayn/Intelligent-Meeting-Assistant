@@ -25,7 +25,7 @@ body {
     border-radius: 5px 5px 5px 5px
 }
 
-.ideas {
+/* .ideas {
     grid-column: 2 / 3;
     grid-row: 1 / 3;
     border-bottom: 1px solid #e1dfdd;
@@ -33,6 +33,57 @@ body {
     background-color: #edebe9;
     box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.1);
     border-radius: 5px 5px 5px 5px
+} */
+
+.ideas {
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    border-bottom: 1px solid #e1dfdd;
+    padding: 15px;
+    background-color: #edebe9;
+    box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+    overflow-y: auto;
+}
+
+.board {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 200px;
+}
+
+/* .board {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    background-color: #f0f0f0;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    min-height: 200px;
+} */
+
+.card {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    cursor: grab;
+    user-select: none;
+}
+
+.card.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.placeholder {
+    height: 40px;
+    border: 2px dashed #bbb;
+    border-radius: 8px;
+    margin: 5px 0;
 }
 
 .video {
@@ -52,6 +103,7 @@ body {
     grid-row: 1 / 3;
     border-left: 1px solid #e1dfdd;
     padding: 15px;
+    overflow-y: auto;
     border: 1px solid #e1dfdd;
     background-color: #edebe9;
     box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.1);

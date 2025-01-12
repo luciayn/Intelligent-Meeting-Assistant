@@ -35,7 +35,7 @@ const ideasItems = document.querySelector('.ideas ul');
 const videoElement = document.querySelector('.video video'); // Obtener el elemento de video centro
 
 
-const qwenWorker = new Worker('qwen.worker.js', { type: "module" }); // Path to your worker file
+const qwenWorker = new Worker('qwen.worker.js', { type: "module" });
 qwenWorker.postMessage({ type: 'load' });
 qwenWorker.onerror = function (error) {
     console.error('qwenWorker error:', error.message);
@@ -49,7 +49,7 @@ qwenWorker.onmessage = async (e) => {
         // keyWordsItems.innerHTML = '';
 
         keywords = e.data.result_keywords;
-        await generateIdeas(keywords);
+        generateIdeas(keywords);
         console.log("Extracted Keywords:", keywords);
 
         // Iterar sobre la lista de palabras clave y crear un elemento de lista para cada una
@@ -67,12 +67,14 @@ qwenWorker.onmessage = async (e) => {
         ideas = e.data.result_ideas;
         console.log("Generated Ideas:", ideas);
 
-        // Iterar sobre la lista de ideas y crear un elemento de lista para cada una
-        ideas.forEach((idea) => {
-            const listItem = document.createElement('li'); // Crear elemento de lista
-            listItem.textContent = idea;               // Definir idea
-            ideasItems.appendChild(listItem);      // Añadir a la lista
-        });
+        // // Iterar sobre la lista de ideas y crear un elemento de lista para cada una
+        // ideas.forEach((idea) => {
+        //     const listItem = document.createElement('li'); // Crear elemento de lista
+        //     listItem.textContent = idea;               // Definir idea
+        //     ideasItems.appendChild(listItem);      // Añadir a la lista
+        // });
+
+        displayIdeasWithDragAndDrop(ideas);
         break;
 
     case 'ready':
@@ -279,12 +281,22 @@ async function updateTranscription(output) {
     textBuffer += transcriptionText + ' '; // Añadir nuevo texto al buffer
 }
 
+function getFullTranscriptionText() {
+    let fullText = '';
+    const paragraphs = transcriptionContainer.querySelectorAll('p');
+    paragraphs.forEach(p => {
+      fullText += p.textContent + ' ';
+    });
+    return fullText.trim();
+}
+
 // Función para extraer palabras clave del prompt generado a partir de la transcripción
 async function extractKeywords(transcription) {
     let content = 
         `I have the following text: ${transcription}.
         Based on the information above, extract the THREE keywords that best describe the topic of the text.
-        The output MUST be the following format: ["keyword1", "keyword2", "keyword3"]. Ouput example: ["School", "Student", "Music"]
+        Each keyword must be defined with double quotation marks ("").
+        The output MUST be the following structure: ["keyword1", "keyword2", "keyword3"]. Ouput example: ["School", "Student", "Music"]
         Make sure the output is composed by a SINGLE list with THREE keywords`;
         
     prompt = [
@@ -302,8 +314,8 @@ async function generateIdeas(keywords) {
     let content = 
         `I have the following keywords: ${keywords}.
         Based on the information above, generate a list of THREE innovative and precise ideas that best describe the topic of the keywords.
-        Each idea must be defined with quotation marks ("").
-        The output MUST be the following format: ["idea1", "idea2", "idea3"].
+        Each idea must be defined with double quotation marks ("").
+        The output MUST be the following structure: ["idea1", "idea2", "idea3"].
         Make sure the output is composed ONLY by a SINGLE list with THREE ideas.
 
         Example:
@@ -311,21 +323,78 @@ async function generateIdeas(keywords) {
         ideas: ["Use the extra week to improve the presentation design and content.", "Assign a team member to focus specifically on the customer feedback analysis section.", "Schedule a review meeting mid-week to ensure the team stays on track."]`;
 
     prompt = [
-        {"role":"system","content": "You are an creative generator, whose objective is to generate ideas from a given list of keywords."},
+        {"role":"system","content": "You are a creative generator, whose objective is to generate ideas from a given list of keywords."},
         {"role": "user", "content": content},
     ]
     // Generar palabras clave
     qwenWorker.postMessage({ type: 'generate_ideas', prompt});
 }
 
-function getFullTranscriptionText() {
-    let fullText = '';
-    const paragraphs = transcriptionContainer.querySelectorAll('p');
-    paragraphs.forEach(p => {
-      fullText += p.textContent + ' ';
+function displayIdeasWithDragAndDrop(ideas) {
+    const ideasBoard = document.getElementById("ideas-board");
+
+    ideas.forEach((idea) => {
+        // Crear tarjeta para cada idea
+        const card = document.createElement("div");
+        card.classList.add("card");
+        card.textContent = idea;
+        card.setAttribute("draggable", "true");
+
+        // Drag-and-drop listeners
+        card.addEventListener("dragstart", (e) => {
+            e.dataTransfer.setData("text/plain", idea);
+            card.classList.add("dragging");
+            setTimeout(() => card.classList.add("hidden"), 0);
+        });
+
+        card.addEventListener("dragend", () => {
+            card.classList.remove("dragging", "hidden");
+        });
+
+        ideasBoard.appendChild(card);
     });
-    return fullText.trim();
+
+    // Drag/arrastrar sobre la zona
+    ideasBoard.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        const draggingCard = document.querySelector(".dragging");
+        const afterElement = getDragAfterElement(ideasBoard, e.clientY);
+
+        if (afterElement == null) {
+            ideasBoard.appendChild(draggingCard);
+        } else {
+            ideasBoard.insertBefore(draggingCard, afterElement);
+        }
+    });
+
+    // Drop/dejar la tarjeta
+    ideasBoard.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const draggedContent = e.dataTransfer.getData("text/plain");
+        console.log(`Dropped: ${draggedContent}`);
+    });
+    
+    // Elementos de ideas que se pueden arrastrar
+    function getDragAfterElement(container, y) {
+        const draggableElements = [
+            ...container.querySelectorAll(".card:not(.dragging)"),
+        ];
+
+        return draggableElements.reduce(
+            (closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset, element: child };
+                } else {
+                    return closest;
+                }
+            },
+            { offset: Number.NEGATIVE_INFINITY }
+        ).element;
+    }
 }
+
 
 async function generateSummary() {
     const fullText = getFullTranscriptionText();
