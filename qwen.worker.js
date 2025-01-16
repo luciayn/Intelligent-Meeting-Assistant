@@ -41,25 +41,25 @@ async function load() {
 // Función para generar una respuesta con el modelo
 async function generate_keywords(prompt) {
     const output = await generator(prompt, {
-        max_new_tokens: 30,
-        temperature: 0.5,
-        top_p: 0.5,
+        max_new_tokens: 20,
+        temperature: 0.3,
+        top_p: 0.9,
         do_sample: true,
         early_stopping: true
     });
     console.log(`keywords format: ${output[0].generated_text[2]['content']}`)
-    return JSON.parse(output[0].generated_text[2]['content'])
+    return output[0].generated_text[2]['content']
 }
 
 // Función para generar una respuesta con el modelo
 async function generate_ideas(prompt) {
     const output = await generator(prompt, {
-        max_new_tokens: 200,
-        temperature: 0.7,
-        top_p: 0.8,
+        max_new_tokens: 35,
+        temperature: 0.3,
+        top_p: 0.9,
         do_sample: true,
         early_stopping: true
     });
     console.log(`ideas format: ${output[0].generated_text[2]['content']}`)
-    return JSON.parse(output[0].generated_text[2]['content'])
+    return output[0].generated_text[2]['content']
 }

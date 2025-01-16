@@ -8,7 +8,6 @@ const processor = await AutoProcessor.from_pretrained(model_id);
 const model = await AutoModel.from_pretrained(model_id);
 
 
-
 const THRESHOLD = 0.25; // Umbral de confianza para las detecciones
 const PEOPLE = 0; // Cantidad de gente detectada en el video
 let lastDetectionTime = 0;
@@ -25,13 +24,13 @@ const timeDataQueue = [];
 let audioContext;
 let stream;
 let textBuffer = ''; // Texto acumulado durante 30 segundos para la generación de palabras clave 
-let keywords;
-let ideas;
+let keywords = [];
+let ideas = [];
 
 const contentSummary = document.querySelector('.summary'); // Obtener el contenedor del resumen (derecha infererior)
 const transcriptionContainer = document.querySelector('.transcription'); // Obtener el contenedor de la transcripción (izquierda)
 const keyWordsItems = document.querySelector('.keywords ul'); // Obtener los elementos de la lista de palabras clave (derecha superior) teniendo en cuenta que se trata de una lista donde cada elemento es el ul/li del fromaro que se le ha puesto en el HTML (actualmente tan solo pone "keywords" en el segundo elemento)
-const ideasItems = document.querySelector('.ideas ul');
+const n_ideas = 1;
 const videoElement = document.querySelector('.video video'); // Obtener el elemento de video centro
 
 
@@ -45,10 +44,7 @@ qwenWorker.onmessage = async (e) => {
     switch(e.data.type) {
         
     case 'result_keywords':
-        console.log('PALABRAS CLAVE GENERADAS');
-        // keyWordsItems.innerHTML = '';
-
-        keywords = e.data.result_keywords;
+        keywords = e.data.result_keywords.split(",");
         generateIdeas(keywords);
         console.log("Extracted Keywords:", keywords);
 
@@ -58,23 +54,15 @@ qwenWorker.onmessage = async (e) => {
             listItem.textContent = keyword;               // Definir palabra clave
             keyWordsItems.appendChild(listItem);      // Añadir a la lista
         });
+        
         break;
         
     case 'result_ideas':
-        console.log('IDEAS GENERADAS');
-        // ideasItems.innerHTML = '';
-
-        ideas = e.data.result_ideas;
-        console.log("Generated Ideas:", ideas);
-
-        // // Iterar sobre la lista de ideas y crear un elemento de lista para cada una
-        // ideas.forEach((idea) => {
-        //     const listItem = document.createElement('li'); // Crear elemento de lista
-        //     listItem.textContent = idea;               // Definir idea
-        //     ideasItems.appendChild(listItem);      // Añadir a la lista
-        // });
-
-        displayIdeasWithDragAndDrop(ideas);
+        ideas.push(e.data.result_ideas);
+        if (ideas.length==n_ideas){
+            displayIdeasWithDragAndDrop(ideas);
+        }
+        ideas = [];
         break;
 
     case 'ready':
@@ -149,7 +137,7 @@ worker.postMessage({ type: 'load' });
 setInterval(() => {
     if (textBuffer.trim().length > 0) {
         console.log('Generating keywords for:', textBuffer);
-        extractKeywords(textBuffer); // Process the accumulated text
+        extractKeywords(textBuffer);
         textBuffer = ''; // Clear the buffer after processing
     }
 }, 30000); // 30 seconds (30*1000 miliseconds)
@@ -294,10 +282,8 @@ function getFullTranscriptionText() {
 async function extractKeywords(transcription) {
     let content = 
         `I have the following text: ${transcription}.
-        Based on the information above, extract the THREE keywords that best describe the topic of the text.
-        Each keyword must be defined with double quotation marks ("").
-        The output MUST be the following structure: ["keyword1", "keyword2", "keyword3"]. Ouput example: ["School", "Student", "Music"]
-        Make sure the output is composed by a SINGLE list with THREE keywords`;
+        Based on the information above, extract THREE keywords that best describe the topic of the text.
+        Make sure the output is composed by ONLY THREE keywords SEPARATED BY COMMAS (,)`;
         
     prompt = [
         {"role":"system","content": "You are a keyword expert generator, whose objective is to generate keywords from a given text."},
@@ -313,15 +299,22 @@ async function generateIdeas(keywords) {
 
     let content = 
         `I have the following keywords: ${keywords}.
-        Based on the information above, generate a list of THREE innovative and precise ideas that best describe the topic of the keywords.
-        Each idea must be defined with double quotation marks ("").
-        The output MUST be the following structure: ["idea1", "idea2", "idea3"].
-        Make sure the output is composed ONLY by a SINGLE list with THREE ideas.
+        Based on the information above, generate a list of ONE innovative and precise idea that best describes the topic of the keywords.
+        Make sure the output is composed ONLY by a SINGLE idea.
 
-        Example:
+        Example 1:
         keywords: ["Project Updates", "Timeline Adjustment", "Customer Feedback Analysis"], 
-        ideas: ["Use the extra week to improve the presentation design and content.", "Assign a team member to focus specifically on the customer feedback analysis section.", "Schedule a review meeting mid-week to ensure the team stays on track."]`;
+        idea: "Use the extra week to improve the presentation design and content."
+        
+        Example 2:
+        keywords: ["Project Updates", "Timeline Adjustment", "Customer Feedback Analysis"], 
+        idea: "Assign a team member to focus specifically on the customer feedback analysis section."
+        
+        Example 3:
+        keywords: ["Project Updates", "Timeline Adjustment", "Customer Feedback Analysis"], 
+        idea: "Schedule a review meeting mid-week to ensure the team stays on track."`;
 
+        
     prompt = [
         {"role":"system","content": "You are a creative generator, whose objective is to generate ideas from a given list of keywords."},
         {"role": "user", "content": content},
@@ -395,23 +388,17 @@ function displayIdeasWithDragAndDrop(ideas) {
     }
 }
 
-
+// Generar resumen de la transcripción
 async function generateSummary() {
     const fullText = getFullTranscriptionText();
     const summary = await summarizeTextWithHF(fullText);
   
-    const summaryParagraph = contentSummary.querySelectorAll('p')[1];
+    const summaryParagraph = contentSummary.querySelector('p');
     summaryParagraph.textContent = summary || "No se pudo generar un resumen.";
 
     console.log(`Summary: ${summaryParagraph.textContent}`);
 }
-// Generar resumen de la transcripción
-/*function generateSummary(){ 
-    // FUNCTION WHERE A SUMMARY IS GENERATED BECAUSE A PERSON ENTERED THE ROOM
-    const summaryParagraph = contentSummary.querySelectorAll('p')[1];
-    summaryParagraph.textContent = 'TECHNICALLY, A SUMMARY OF THE TRANSCRIPTION WOULD GO HERE (SHOULD BE GENERATED WHEN THE DETECTION COUNT OF PEOPLE INCREASES)';
 
- }*/
 let previousDetectionsCount = 0; // Para quedarse con la detección anterior y compararla con la actual (para ver si ha aumentado o disminuido)
 // Función de detección de objetos en el video (en este caso, personas)
 async function detectObjectsInVideo() {
