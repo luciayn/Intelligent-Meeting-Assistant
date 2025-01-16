@@ -9,12 +9,11 @@ const model = await AutoModel.from_pretrained(model_id);
 
 
 const THRESHOLD = 0.25; // Umbral de confianza para las detecciones
-const PEOPLE = 0; // Cantidad de gente detectada en el video
 let lastDetectionTime = 0;
 
 
 const WHISPER_SAMPLING_RATE = 16000; //sampling rate para la transcripción de video
-const MAX_AUDIO_LENGTH = 3.5; // seconds
+const MAX_AUDIO_LENGTH = 3.5; // segundos
 
 const MAX_SAMPLES = WHISPER_SAMPLING_RATE * MAX_AUDIO_LENGTH; // max_samples para que haga la transcripción cada max_audio_legth segundos
 
@@ -34,6 +33,7 @@ const n_ideas = 1;
 const videoElement = document.querySelector('.video video'); // Obtener el elemento de video centro
 
 
+// Inicializar qwernWorker
 const qwenWorker = new Worker('qwen.worker.js', { type: "module" });
 qwenWorker.postMessage({ type: 'load' });
 qwenWorker.onerror = function (error) {
@@ -59,6 +59,8 @@ qwenWorker.onmessage = async (e) => {
         
     case 'result_ideas':
         ideas.push(e.data.result_ideas);
+
+        // Mostrar ideas en la interfaz
         if (ideas.length==n_ideas){
             displayIdeasWithDragAndDrop(ideas);
         }
@@ -72,7 +74,7 @@ qwenWorker.onmessage = async (e) => {
 }
 
 
-
+// Inicializar WhisperWorker
 const worker = new Worker('whisper.worker.js', { type: "module" });
 
 // Mensajes que puede recibir el worker
@@ -122,8 +124,6 @@ worker.onerror = function (error) {
 worker.postMessage({ type: 'load' });
 
 
-
-
 (async function app() {
 // Inicialización
     if (navigator.mediaDevices.getUserMedia) {
@@ -133,14 +133,14 @@ worker.postMessage({ type: 'load' });
 }());
 
 
-// Start a timer to generate keywords every 30 seconds
+// Temporizador cada 30 segundos para la generación de palabras clave
 setInterval(() => {
     if (textBuffer.trim().length > 0) {
         console.log('Generating keywords for:', textBuffer);
         extractKeywords(textBuffer);
-        textBuffer = ''; // Clear the buffer after processing
+        textBuffer = ''; // Reiniciar buffer
     }
-}, 30000); // 30 seconds (30*1000 miliseconds)
+}, 30000); // 30 segundos (30*1000 milisegundos)
 
 
 // Función para iniciar la grabación de audio en tiempo real, es decir, con nuestra propia voz (actualmente en desuso posible implementación futura)
@@ -232,8 +232,6 @@ async function startRecordingVideo(videoElement) {
 }
 
 
-
-
 // Función para obtener el audio del video para poder procesarlo
 async function getAudioStream(audioTrackConstraints) {
     let options = audioTrackConstraints || {};
@@ -299,7 +297,7 @@ async function generateIdeas(keywords) {
 
     let content = 
         `I have the following keywords: ${keywords}.
-        Based on the information above, generate a list of ONE innovative and precise idea that best describes the topic of the keywords.
+        Based on the information above, generate ONE innovative and precise idea that best describes the topic of the keywords.
         Make sure the output is composed ONLY by a SINGLE idea.
 
         Example 1:
@@ -323,6 +321,7 @@ async function generateIdeas(keywords) {
     qwenWorker.postMessage({ type: 'generate_ideas', prompt});
 }
 
+// Mostrar ideas en la Interfaz de forma interactiva
 function displayIdeasWithDragAndDrop(ideas) {
     const ideasBoard = document.getElementById("ideas-board");
 

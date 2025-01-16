@@ -1,5 +1,5 @@
 export async function summarizeTextWithHF(text) {
-    const hfToken = "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"; // CADA UNO PONE SU TOKEN     // en producción, ¡usa variable de entorno en tu servidor!
+    const hfToken = ""; // CADA UNO PONE SU TOKEN     // en producción, ¡usa variable de entorno en tu servidor!
     const url = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn";
   
     try {
