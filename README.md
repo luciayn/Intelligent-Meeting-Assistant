@@ -28,7 +28,7 @@ The Intelligent Meeting Assistant is a web application designed to transcribe, s
 ### Running the Project
 1. Clone the repository:
     ```sh
-    git clone <repository-url>
+    git clone https://github.com/luciayn/Intelligent-Meeting-Assistant.git
     ```
 2. Open `index.html` in your web browser.
 
